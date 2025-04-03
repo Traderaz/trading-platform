@@ -1,0 +1,254 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(BUYER)
+  bio           String?
+  website       String?
+  socialLinks   Json?     // Store social media links as JSON
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  stripeAccount StripeAccount?
+  services      Service[]        @relation("CreatedServices")
+  purchasedServices Service[]    @relation("PurchasedServices")
+  reviews       Review[]
+  receivedReviews Review[]       @relation("ReceivedReviews")
+  subscriptions Subscription[]
+  enrollments   Enrollment[]
+}
+
+enum UserRole {
+  ADMIN
+  CREATOR
+  BUYER
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StripeAccount {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  stripeUserId  String   @unique
+  accessToken   String
+  refreshToken  String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        ServiceType
+  status      ServiceStatus @default(DRAFT)
+  level       ServiceLevel @default(BEGINNER)
+  price       Float
+  currency    String    @default("USD")
+  features    Json      // Store features as JSON array
+  content     Json?     // Store course content as JSON
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  tags        Tag[]     // Many-to-many relation with tags
+  creatorId   String
+  creator     User      @relation("CreatedServices", fields: [creatorId], references: [id])
+  buyers      User[]    @relation("PurchasedServices")
+  reviews     Review[]
+  subscriptions Subscription[]
+  enrollments Enrollment[]
+  
+  // Course specific fields
+  courseDuration    Int?     // Duration in hours
+  courseModules     Json?    // Course modules and lessons
+  coursePrerequisites String? // Prerequisites for the course
+  courseAccessType  CourseAccessType @default(LIFETIME) // Lifetime, Subscription, or Time-limited
+  courseAccessDuration Int?  // Duration in days for time-limited access
+  courseStartDate   DateTime? // Start date for scheduled courses
+  courseEndDate     DateTime? // End date for scheduled courses
+  courseMaxStudents Int?     // Maximum number of students allowed
+  courseLanguage    String?  // Language of the course
+  courseCertificate Boolean @default(false) // Whether the course offers a certificate
+  courseRequirements String? // Technical requirements for the course
+  courseResources   Json?    // Additional resources (PDFs, links, etc.)
+  courseSupport     String?  // Support options (email, Discord, etc.)
+  courseRefundPolicy String? // Refund policy for the course
+  
+  // Discord group specific fields
+  discordInviteLink String?  // Discord invite link
+  discordMemberCount Int?    // Current member count
+  discordRules      String?  // Group rules and guidelines
+  
+  // Livestream specific fields
+  streamSchedule    Json?    // Stream schedule
+  streamPlatform    String?  // Platform (YouTube, Twitch, etc.)
+  streamDuration    Int?     // Duration in minutes
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([creatorId])
+  @@index([categoryId])
+}
+
+enum ServiceType {
+  COURSE
+  DISCORD_GROUP
+  LIVESTREAM
+  SIGNALS
+  MENTORSHIP
+  ANALYSIS
+  TOOL
+  OTHER
+}
+
+enum ServiceStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  SUSPENDED
+}
+
+enum ServiceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  services    Service[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  services  Service[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  rating      Int
+  comment     String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  creatorId   String
+  creator     User     @relation("ReceivedReviews", fields: [creatorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, serviceId])
+  @@index([serviceId])
+  @@index([creatorId])
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  status      SubscriptionStatus @default(ACTIVE)
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([serviceId])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAUSED
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Enrollment {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  progress    Float    @default(0)
+  status      EnrollmentStatus @default(IN_PROGRESS)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([serviceId])
+}
+
+enum EnrollmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
+}
+
+enum CourseAccessType {
+  LIFETIME
+  SUBSCRIPTION
+  TIME_LIMITED
+} 

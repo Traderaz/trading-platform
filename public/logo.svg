@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="32" cy="32" r="30" fill="#065F46" />
+  
+  <!-- Trading Graph Line -->
+  <path 
+    d="M16 48 L24 32 L32 40 L40 24 L48 36" 
+    stroke="#D1FAE5" 
+    stroke-width="4" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+    fill="none"
+  />
+  
+  <!-- Data Points -->
+  <circle cx="24" cy="32" r="4" fill="#D1FAE5" />
+  <circle cx="32" cy="40" r="4" fill="#D1FAE5" />
+  <circle cx="40" cy="24" r="4" fill="#D1FAE5" />
+  <circle cx="48" cy="36" r="4" fill="#D1FAE5" />
+  
+  <!-- Trading Arrow -->
+  <path 
+    d="M20 20 L28 28 L20 36" 
+    stroke="#D1FAE5" 
+    stroke-width="4" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+    fill="none"
+  />
+</svg> 
